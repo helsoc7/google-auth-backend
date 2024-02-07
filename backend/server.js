@@ -35,19 +35,7 @@ db.serialize(() => {
   db.run("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, name TEXT, googleId TEXT, secret TEXT)");
 });
 
-// Passport local strategy
-passport.use(new passportLocal((username, password, done) => {
-  db.get("SELECT * FROM users WHERE username = ?", [username], (err, row) => {
-    if (!row) return done(null, false);
-    bcrypt.compare(password, row.secret, (err, result) => {
-      if (result) {
-        return done(null, row);
-      } else {
-        return done(null, false);
-      }
-    });
-  });
-}));
+
 
 // Passport Google strategy
 passport.use(new GoogleStrategy({
