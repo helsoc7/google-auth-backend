@@ -8,9 +8,12 @@ const passportLocal = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const bcrypt = require('bcrypt');
 
+// Initialisierung von Express
 const app = express();
+// Initialisierung der SQLite-Datenbank
 const db = new sqlite3.Database('./database.db');
 
+// Einrichtung der Cors-Options, da wir vom Frontend auf unser Backend zugreifen wollen
 const corsOptions = {
   origin: 'http://localhost:3000',
   methods: 'GET,POST,PUT,DELETE',
@@ -21,6 +24,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: true }));
 
+// Benutzersitzungen ermöglichen
 app.use(session({
   secret: "Our little secret.",
   resave: false,
@@ -44,6 +48,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "http://localhost:4000/auth/google/callback",
     userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
   },
+  // Ressourcen (Name und so) mit dem Key in die Datenbank schreiben
   function(accessToken, refreshToken, profile, cb) {
     db.get("SELECT * FROM users WHERE googleId = ?", [profile.id], (err, row) => {
       if (!row) {
@@ -60,7 +65,7 @@ passport.use(new GoogleStrategy({
   }
 ));
 
-
+// Für die Session wichtig
 passport.serializeUser(function(user, done) {
   done(null, user.id);
 });
@@ -71,10 +76,21 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
+
+// Routen definieren
+// Leitet den Benutzer zur Authentifizierung mit Google weiter
+// Eigentlicher Start des OAuth 2.0-Authentifizierungsprozesses
+// scope definieren, welche Informationen die Anwendung benötigt (profile)
 app.get("/auth/google",
   passport.authenticate("google", { scope: ["profile"] })
 );
 
+
+// callback URL (wird auch in der GoogleStrategy implementiert)
+// Nach der Authentifizierung und Autorisierung durch Google wird der Benutzer zusammen mit Code an diesen Endpunkt weitergeleitet
+// passport verantwortlich für Tausch von Autorisierungscode gegen Access Token
+// Bei Fehler, wird auf /login geleitet
+// Bei Erfolg wird auf / geleitet
 app.get("/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/login" }),
   function(req, res) {
@@ -92,7 +108,12 @@ app.get("/", (req, res) => {
     res.send("Welcome to the homepage!");
   });
 
+  app.get("/login", (req, res) => {
+    res.send("Bitte anmelden!");
+  });
 
+
+  // Testausgabe, um beim Start des Servers zu sehen, welche User in unserer Datenbank sind
   db.all("SELECT * FROM users", (err, rows) => {
     if (err) {
       console.error("Fehler beim Abrufen der Daten:", err);
